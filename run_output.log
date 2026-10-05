@@ -1,0 +1,73 @@
+==============================================================================================================
+LGAN Adversarial-ML Attack Framework -- end-to-end experiment reproduction
+==============================================================================================================
+
+### Table II-A: LGAN Python/NumPy Prototype Timing ###
+
+Table II-A -- LGAN Python/NumPy Prototype Timing (this benchmark, same process/hardware)
+Scheme                                 Keygen(s)    Sign(ms)    Verify(ms)   pk(KB)   sk(KB)  sig(KB)
+-----------------------------------------------------------------------------------------------------
+LGAN-I (Design B (hash commitment, LGAN-II v2))     0.000   0.297±0.15   0.1722±0.039   549.03     2.00     5.06
+LGAN-II (Design B (hash commitment, LGAN-II v2))     0.000   0.477±0.11   0.2702±0.041  1207.53     3.00     7.56
+(Sign/Verify columns: median±std over N=20 runs.)
+
+
+### Table II-B: Standard NIST Reference Sizes ###
+
+Table II-B -- Standard NIST Reference Key/Signature Sizes (published spec values,
+              not benchmark measurements; no timing reported here -- see note below)
+Scheme                                    Level        pk (B)   sk (B)   sig (B)   pk (KB)  sig (KB)
+----------------------------------------------------------------------------------------------------
+Dilithium2 / ML-DSA-44 (FIPS 204)         NIST L2        1312     2528      2420      1.28      2.36
+Falcon-512 / FN-DSA-512 (FIPS 206, draft) NIST L1         897     1281       666      0.88      0.65
+SPHINCS+-SHA2-128f (FIPS 205)             NIST L1          32       64     17088      0.03     16.69
+
+Note: absolute Python-prototype wall-clock timings for these NIST schemes are not
+reported here because they are not comparable to the optimised C reference
+implementations' performance (the manuscript notes a ~50x gap). Sizes above are
+implementation-independent and match the published FIPS 204/205/206 specifications
+exactly, which is the only NIST-comparison claim Table II-B makes.
+
+### Table III: Security Benchmark (LGAN-I, 5 seeds x 1000 attempts/seed/level) ###
+
+[loading cached results from security_results_LGAN-I.pkl -- delete this file, or pass use_cached_results=False, to force a fresh run]
+
+Table III -- Security Benchmark (LGAN-I, 5 seeds x 1000 attempts/seed/level)
+Layered / mutually-exclusive outcome rates: mean% (std%) across seeds
+
+Attack  Design  No bypass       Lattice only    GAN only        Full forgery    Lattice gate    GAN gate        
+----------------------------------------------------------------------------------------------------------------
+L1      A        65.9( 0.7)       0.0( 0.0)      34.1( 0.7)       0.0( 0.0)       0.0( 0.0)      34.1( 0.7)     
+L1      B       100.0( 0.0)       0.0( 0.0)       0.0( 0.0)       0.0( 0.0)       0.0( 0.0)       0.0( 0.0)     
+L2      A        23.2( 6.4)       0.0( 0.0)      76.8( 6.4)       0.0( 0.0)       0.0( 0.0)      76.8( 6.4)     
+L2      B       100.0( 0.0)       0.0( 0.0)       0.0( 0.0)       0.0( 0.0)       0.0( 0.0)       0.0( 0.0)     
+L3      A        25.4( 0.8)       0.0( 0.0)      74.6( 0.8)       0.0( 0.0)       0.0( 0.0)      74.6( 0.8)     
+L3      B       100.0( 0.0)       0.0( 0.0)       0.0( 0.0)       0.0( 0.0)       0.0( 0.0)       0.0( 0.0)     
+L4      A        62.6( 2.1)       0.0( 0.0)      37.4( 2.1)       0.0( 0.0)       0.0( 0.0)      37.4( 2.1)     
+L4      B       100.0( 0.0)       0.0( 0.0)       0.0( 0.0)       0.0( 0.0)       0.0( 0.0)       0.0( 0.0)     
+L5      A         0.1( 0.2)       0.0( 0.0)      99.9( 0.2)       0.0( 0.0)       0.0( 0.0)      99.9( 0.2)     
+L5      B       100.0( 0.0)       0.0( 0.0)       0.0( 0.0)       0.0( 0.0)       0.0( 0.0)       0.0( 0.0)     
+
+Notes:
+  - 'No bypass'/'Lattice only'/'GAN only'/'Full forgery' are MUTUALLY EXCLUSIVE
+    and sum to 100% per row (up to rounding).
+  - 'Lattice gate' = P(gate1 AND gate2) and 'GAN gate' = P(gate3) are the two
+    MARGINAL layer-pass rates (lattice_only + full_forgery, and gan_only + full_forgery
+    respectively) -- reported for direct comparability with the single aggregated
+    metric used in the original 100-attempt/single-seed benchmark.
+
+  Design B worst-case (L5) GAN-gate pooled Wilson 95% upper bound (pooled n=5000): 0.08%
+
+=== GAN Isolation Analysis (Design A, Section V.D) ===
+  genuine mean score            : 0.852 (std 0.329)
+  random mean score             : 0.335 (std 0.408)
+  gradient-optimised mean score : 0.699 (std 0.458)
+
+### Key Finding ###
+Design A (D-in-pk) GAN-gate bypass rate is substantial and non-monotonic across
+L1-L5 (34% -> 77% -> 75% -> 37% -> 100%, mean over 5 seeds), while Design B (hash
+commitment, C_G + pi) holds at 0.0% +/- 0.0% across all five levels and all five
+seeds. 'Full Forgery' is 0% for both designs at every level -- Gates 1-2 (lattice
+hardness) independently block forgery regardless of the Gate-3 outcome, so the
+'GAN gate' column (not 'Full Forgery') is the metric that isolates Gate 3's own
+security margin, which is what the manuscript's central claim is about.
